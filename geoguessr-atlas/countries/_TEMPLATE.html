@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>COUNTRY NAME — GeoGuessr Atlas</title>
+<link rel="stylesheet" href="../style.css"/>
+<style>
+  /* ── IMAGE SELECTION OVERLAY ── */
+  #img-overlay {
+    position: fixed; pointer-events: none;
+    box-sizing: border-box; z-index: 200;
+    border: 2px solid var(--accent);
+    border-radius: 4px; display: none;
+  }
+  #img-overlay.visible { display: block; pointer-events: all; }
+  #img-drag-handle {
+    position: absolute; top: -26px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #000;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 700;
+    padding: 2px 10px; border-radius: 3px 3px 0 0;
+    cursor: grab; user-select: none; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  #img-drag-handle:active { cursor: grabbing; }
+  #img-delete-btn {
+    background: rgba(0,0,0,0.3); border: none; color: #000; font-size: 0.7rem;
+    cursor: pointer; padding: 0 4px; border-radius: 2px; line-height: 1.4; font-weight: 700;
+  }
+  #img-delete-btn:hover { background: #c0392b; color: #fff; }
+  .img-rh {
+    position: absolute; width: 10px; height: 10px;
+    background: var(--accent); border: 2px solid #000;
+    border-radius: 2px; box-sizing: border-box;
+  }
+  .img-rh[data-pos="nw"] { top:-5px; left:-5px; cursor:nw-resize; }
+  .img-rh[data-pos="n"]  { top:-5px; left:50%; transform:translateX(-50%); cursor:n-resize; }
+  .img-rh[data-pos="ne"] { top:-5px; right:-5px; cursor:ne-resize; }
+  .img-rh[data-pos="e"]  { top:50%; right:-5px; transform:translateY(-50%); cursor:e-resize; }
+  .img-rh[data-pos="se"] { bottom:-5px; right:-5px; cursor:se-resize; }
+  .img-rh[data-pos="s"]  { bottom:-5px; left:50%; transform:translateX(-50%); cursor:s-resize; }
+  .img-rh[data-pos="sw"] { bottom:-5px; left:-5px; cursor:sw-resize; }
+  .img-rh[data-pos="w"]  { bottom:50%; left:-5px; transform:translateY(50%); cursor:w-resize; }
+  img.img-selected { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="../index.html">GeoGuessr Atlas</a>
+  <span class="nav-sep">/</span>
+  <span class="nav-country">COUNTRY NAME</span>
+  <a class="nav-back" href="../index.html">← Back to Map</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-flag">🏳️</div>  <!-- Change to correct flag emoji -->
+  <div class="hero-info">
+    <div class="hero-name">COUNTRY NAME</div>
+    <div class="hero-region">REGION · CONTINENT</div>
+    <!-- Change class to: easy / medium / hard -->
+    <!-- Change text to: ● EASY / ◆ MEDIUM / ▲ HARD -->
+    
+  </div>
+</div>
+
+<div class="content">
+
+  <div class="section-label">Meta Information</div>
+  <div class="meta-grid">
+
+    <div class="meta-card">
+      <div class="meta-icon">🚗</div>
+      <div class="meta-title">Google Car</div>
+      <div class="meta-body">Write about left/right-hand traffic, Google car appearance, coverage quality.</div>
+    </div>
+
+    <div class="meta-card">
+      <div class="meta-icon">🔌</div>
+      <div class="meta-title">Utility Poles</div>
+      <div class="meta-body">Describe the poles: wooden/concrete, density, wire patterns, transformer style.</div>
+    </div>
+
+    <div class="meta-card">
+      <div class="meta-icon">🚦</div>
+      <div class="meta-title">Road Signs</div>
+      <div class="meta-body">Sign colors, language, unique words or formats to look for.</div>
+    </div>
+
+    <div class="meta-card">
+      <div class="meta-icon">🪪</div>
+      <div class="meta-title">License Plates</div>
+      <div class="meta-body mono">Color · format
+Example: AA-00-AA
+Any special codes</div>
+    </div>
+
+    <div class="meta-card">
+      <div class="meta-icon">🌍</div>
+      <div class="meta-title">Language</div>
+      <div class="meta-body">Script, unique letters, common words to recognize.</div>
+    </div>
+
+    <div class="meta-card">
+      <div class="meta-icon">🏗️</div>
+      <div class="meta-title">Architecture</div>
+      <div class="meta-body">Building styles, roof types, wall colors, unique features.</div>
+    </div>
+
+    <div class="meta-card">
+      <div class="meta-icon">🌿</div>
+      <div class="meta-title">Landscape</div>
+      <div class="meta-body">Terrain, vegetation, climate clues.</div>
+    </div>
+
+    <div class="meta-card">
+      <div class="meta-icon">⚡</div>
+      <div class="meta-title">Special Clues</div>
+      <div class="meta-body">Any unique identifiers specific to this country.</div>
+    </div>
+
+  </div>
+
+  <div class="section-label">Quick Tips</div>
+  <ul class="tips-list">
+    <li>Tip 1 — write a useful GeoGuessr clue here</li>
+    <li>Tip 2 — another clue</li>
+    <li>Tip 3 — another clue</li>
+  </ul>
+
+  <div class="section-label">Reference Images</div>
+  <div class="gallery">
+
+    <div class="gallery-item">
+      <!-- To add a real image: save it in the images/ folder, then change src below -->
+      <!-- Example: src="../images/brazil-poles.jpg" -->
+      <img src="https://placehold.co/600x338/0f1419/4a6070?text=Add+your+image+here" alt="Image 1"/>
+      <div class="gallery-caption">Caption for image 1</div>
+    </div>
+
+    <div class="gallery-item">
+      <img src="https://placehold.co/600x338/0f1419/4a6070?text=Add+your+image+here" alt="Image 2"/>
+      <div class="gallery-caption">Caption for image 2</div>
+    </div>
+
+    <div class="gallery-item">
+      <img src="https://placehold.co/600x338/0f1419/4a6070?text=Add+your+image+here" alt="Image 3"/>
+      <div class="gallery-caption">Caption for image 3</div>
+    </div>
+
+  </div>
+
+  <div class="section-label">My Notes</div>
+  <div class="notes-box">
+Write your own personal notes and observations here.
+No coding needed — just replace this text.
+  </div>
+
+</div>
+
+<!-- IMAGE SELECTION OVERLAY -->
+<div id="img-overlay">
+  <div id="img-drag-handle">
+    ✥ drag
+    <button id="img-delete-btn" title="Remove image" onclick="deleteSelectedImg()">✕</button>
+  </div>
+  <div class="img-rh" data-pos="nw"></div>
+  <div class="img-rh" data-pos="n"></div>
+  <div class="img-rh" data-pos="ne"></div>
+  <div class="img-rh" data-pos="e"></div>
+  <div class="img-rh" data-pos="se"></div>
+  <div class="img-rh" data-pos="s"></div>
+  <div class="img-rh" data-pos="sw"></div>
+  <div class="img-rh" data-pos="w"></div>
+</div>
+
+<script>
+// ── IMAGE DRAG & RESIZE ───────────────────────────────────────────
+// Click any image on the page to select it, then drag or resize it.
+const overlay    = document.getElementById('img-overlay');
+const dragHandle = document.getElementById('img-drag-handle');
+let selectedImg  = null;
+
+function syncOverlay() {
+  if (!selectedImg) return;
+  const r = selectedImg.getBoundingClientRect();
+  overlay.style.left   = r.left   + 'px';
+  overlay.style.top    = r.top    + 'px';
+  overlay.style.width  = r.width  + 'px';
+  overlay.style.height = r.height + 'px';
+}
+
+function selectImg(img) {
+  if (selectedImg) selectedImg.classList.remove('img-selected');
+  selectedImg = img;
+  if (!img) { overlay.classList.remove('visible'); return; }
+  img.classList.add('img-selected');
+  overlay.classList.add('visible');
+  syncOverlay();
+}
+
+function deleteSelectedImg() {
+  if (!selectedImg) return;
+  selectedImg.remove();
+  selectImg(null);
+}
+
+// Click any image → select it
+document.addEventListener('click', e => {
+  if (e.target.tagName === 'IMG' && !overlay.contains(e.target)) {
+    e.preventDefault(); selectImg(e.target);
+  } else if (!overlay.contains(e.target)) {
+    selectImg(null);
+  }
+});
+
+window.addEventListener('scroll', syncOverlay, true);
+window.addEventListener('resize', syncOverlay);
+
+// ── DRAG ──────────────────────────────────────────────────────────
+dragHandle.addEventListener('mousedown', e => {
+  if (!selectedImg) return;
+  e.preventDefault();
+  const startX = e.clientX, startY = e.clientY;
+  const r = selectedImg.getBoundingClientRect();
+  const parent = selectedImg.offsetParent || document.body;
+  const pr = parent.getBoundingClientRect();
+
+  if (selectedImg.style.position !== 'absolute') {
+    selectedImg.style.position = 'absolute';
+    selectedImg.style.left = (r.left - pr.left) + 'px';
+    selectedImg.style.top  = (r.top  - pr.top)  + 'px';
+    selectedImg.style.width  = r.width  + 'px';
+    selectedImg.style.height = r.height + 'px';
+  }
+
+  const startLeft = parseInt(selectedImg.style.left) || 0;
+  const startTop  = parseInt(selectedImg.style.top)  || 0;
+
+  function onMove(ev) {
+    selectedImg.style.left = (startLeft + ev.clientX - startX) + 'px';
+    selectedImg.style.top  = (startTop  + ev.clientY - startY) + 'px';
+    syncOverlay();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+// ── RESIZE ────────────────────────────────────────────────────────
+document.querySelectorAll('.img-rh').forEach(handle => {
+  handle.addEventListener('mousedown', e => {
+    if (!selectedImg) return;
+    e.preventDefault();
+    const pos = handle.dataset.pos;
+    const startX = e.clientX, startY = e.clientY;
+    const r = selectedImg.getBoundingClientRect();
+    const parent = selectedImg.offsetParent || document.body;
+    const pr = parent.getBoundingClientRect();
+
+    if (selectedImg.style.position !== 'absolute') {
+      selectedImg.style.position = 'absolute';
+      selectedImg.style.left = (r.left - pr.left) + 'px';
+      selectedImg.style.top  = (r.top  - pr.top)  + 'px';
+      selectedImg.style.width  = r.width  + 'px';
+      selectedImg.style.height = r.height + 'px';
+    }
+
+    const startW = r.width, startH = r.height;
+    const startLeft = parseInt(selectedImg.style.left) || 0;
+    const startTop  = parseInt(selectedImg.style.top)  || 0;
+
+    function onMove(ev) {
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      let newW = startW, newH = startH, newLeft = startLeft, newTop = startTop;
+      if (pos.includes('e')) newW = Math.max(40, startW + dx);
+      if (pos.includes('s')) newH = Math.max(30, startH + dy);
+      if (pos.includes('w')) { newW = Math.max(40, startW - dx); newLeft = startLeft + (startW - newW); }
+      if (pos.includes('n')) { newH = Math.max(30, startH - dy); newTop  = startTop  + (startH - newH); }
+      selectedImg.style.width  = newW + 'px';
+      selectedImg.style.height = newH + 'px';
+      selectedImg.style.left   = newLeft + 'px';
+      selectedImg.style.top    = newTop  + 'px';
+      syncOverlay();
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+});
+</script>
+</body>
+</html>
