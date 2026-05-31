@@ -41,7 +41,7 @@ geoguessr-atlas/
 1. Go to github.com and create a repo called `geoguessr-atlas`
 2. Upload ALL these files (keeping the folder structure)
 3. Go to Settings → Pages → Source: Deploy from branch → main → / (root)
-4. Your site will be live at: https://YOURUSERNAME.github.io/geoguessr-atlas
+4. Your site will be live at: https://lukcifergh.github.io/geoguessr-atlas
 
 ## Difficulty levels
 
