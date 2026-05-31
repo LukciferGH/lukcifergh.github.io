@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Portugal — GeoGuessr Atlas</title>
+<link rel="stylesheet" href="../style.css"/>
+<style>
+  /* ── HERO WITH BACKGROUND IMAGE ── */
+  .hero {
+    position: relative; padding: 48px 80px 40px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-end; gap: 32px;
+    overflow: hidden; min-height: 180px;
+  }
+  .hero-bg {
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; object-position:center;
+    opacity:0.25; pointer-events:none; display:block;
+  }
+  .hero::after {
+    content:''; position:absolute; inset:0;
+    background: linear-gradient(to right,rgba(9,12,16,0.85) 40%,rgba(9,12,16,0.2) 100%),
+                linear-gradient(to top,rgba(9,12,16,0.7) 0%,transparent 60%);
+    pointer-events:none;
+  }
+  .hero-flag,.hero-info { position:relative; z-index:1; }
+
+  /* ── EDITOR WRAPPER ── */
+  .freeform { max-width:860px; margin:0 auto; padding:40px 32px 80px; }
+
+  /* Save bar */
+  .save-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; background: var(--card); border: 1px solid var(--border);
+    border-bottom: none; border-radius: 6px 6px 0 0;
+    position: sticky; top: 52px; z-index: 51;
+  }
+  .save-status { font-family:'JetBrains Mono',monospace; font-size:0.65rem; color:var(--dim); display:flex; align-items:center; gap:6px; min-width:120px; }
+  .save-status.saving { color:var(--accent); }
+  .save-status.saved  { color:var(--green); }
+  .save-status.error  { color:var(--red); }
+
+  /* Toolbar */
+  .editor-toolbar {
+    display:flex; flex-wrap:wrap; gap:4px; padding:10px 12px;
+    background:var(--card); border:1px solid var(--border);
+    border-bottom:none; position:sticky; top:92px; z-index:50;
+  }
+  .tb-btn {
+    background:transparent; border:1px solid var(--border); color:var(--text);
+    border-radius:3px; padding:4px 9px;
+    font-family:'JetBrains Mono',monospace; font-size:0.72rem;
+    cursor:pointer; transition:background 0.1s,color 0.1s; line-height:1.4;
+  }
+  .tb-btn:hover { background:var(--border); color:var(--accent); }
+  .tb-sep { width:1px; background:var(--border); margin:2px 4px; align-self:stretch; }
+  .tb-color-wrap { position:relative; display:flex; align-items:center; }
+  .tb-color-wrap input[type=color] { position:absolute; opacity:0; width:100%; height:100%; cursor:pointer; }
+  .tb-color-swatch { width:20px; height:20px; border-radius:3px; border:1px solid var(--border); background:#e8b84b; pointer-events:none; }
+
+  /* Editor */
+  .editor-area {
+    min-height:480px; background:var(--card); border:1px solid var(--border);
+    border-radius:0 0 6px 6px; padding:24px 28px; outline:none;
+    font-family:'Syne',sans-serif; font-size:0.9rem; line-height:1.75; color:var(--text);
+  }
+  .editor-area:focus { border-color:#2a3f56; }
+  .editor-area h1 { font-family:'Bebas Neue',sans-serif; font-size:2.2rem; letter-spacing:3px; color:var(--accent); margin:16px 0 8px; line-height:1.1; }
+  .editor-area h2 { font-family:'Bebas Neue',sans-serif; font-size:1.4rem; letter-spacing:2px; color:var(--text); margin:14px 0 6px; border-bottom:1px solid var(--border); padding-bottom:4px; }
+  .editor-area h3 { font-family:'JetBrains Mono',monospace; font-size:0.8rem; text-transform:uppercase; letter-spacing:2px; color:var(--dim); margin:12px 0 4px; }
+  .editor-area ul,.editor-area ol { padding-left:24px; margin:6px 0 10px; }
+  .editor-area li { margin:3px 0; }
+  .editor-area p { margin:6px 0; }
+  .editor-area img { max-width:100%; border-radius:4px; border:1px solid var(--border); margin:12px 0; display:block; }
+  .editor-area blockquote { border-left:3px solid var(--accent); padding:8px 16px; color:var(--dim); background:rgba(232,184,75,0.05); margin:10px 0; border-radius:0 4px 4px 0; }
+  .editor-area hr { border:none; border-top:1px solid var(--border); margin:16px 0; }
+
+  /* Image insert */
+  .img-insert-bar { display:none; gap:8px; align-items:center; margin-top:6px; padding:8px 12px; background:var(--surface); border:1px solid var(--border); border-radius:4px; }
+  .img-insert-bar.open { display:flex; }
+
+  /* ── IMAGE SELECTION OVERLAY ── */
+  #img-overlay {
+    position: fixed; pointer-events: none;
+    box-sizing: border-box; z-index: 200;
+    border: 2px solid var(--accent);
+    border-radius: 4px; display: none;
+  }
+  #img-overlay.visible { display: block; pointer-events: all; }
+
+  /* drag handle bar at top */
+  #img-drag-handle {
+    position: absolute; top: -26px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #000;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; font-weight: 700;
+    padding: 2px 10px; border-radius: 3px 3px 0 0;
+    cursor: grab; user-select: none; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  #img-drag-handle:active { cursor: grabbing; }
+  #img-delete-btn {
+    background: rgba(0,0,0,0.3); border: none; color: #000; font-size: 0.7rem;
+    cursor: pointer; padding: 0 4px; border-radius: 2px; line-height: 1.4;
+    font-weight: 700;
+  }
+  #img-delete-btn:hover { background: #c0392b; color: #fff; }
+
+  /* resize handles */
+  .img-rh {
+    position: absolute; width: 10px; height: 10px;
+    background: var(--accent); border: 2px solid #000;
+    border-radius: 2px; box-sizing: border-box;
+  }
+  .img-rh[data-pos="nw"] { top:-5px; left:-5px; cursor:nw-resize; }
+  .img-rh[data-pos="n"]  { top:-5px; left:50%; transform:translateX(-50%); cursor:n-resize; }
+  .img-rh[data-pos="ne"] { top:-5px; right:-5px; cursor:ne-resize; }
+  .img-rh[data-pos="e"]  { top:50%; right:-5px; transform:translateY(-50%); cursor:e-resize; }
+  .img-rh[data-pos="se"] { bottom:-5px; right:-5px; cursor:se-resize; }
+  .img-rh[data-pos="s"]  { bottom:-5px; left:50%; transform:translateX(-50%); cursor:s-resize; }
+  .img-rh[data-pos="sw"] { bottom:-5px; left:-5px; cursor:sw-resize; }
+  .img-rh[data-pos="w"]  { bottom:50%; left:-5px; transform:translateY(50%); cursor:w-resize; }
+
+  /* while an image is selected, highlight it lightly */
+  .editor-area img.img-selected { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .img-insert-bar input[type=text] { flex:1; background:var(--card); border:1px solid var(--border); border-radius:3px; color:var(--text); font-family:'JetBrains Mono',monospace; font-size:0.72rem; padding:5px 10px; outline:none; }
+  .img-insert-bar button { background:var(--accent); border:none; border-radius:3px; color:#000; font-family:'JetBrains Mono',monospace; font-size:0.72rem; font-weight:600; padding:5px 12px; cursor:pointer; }
+  .img-insert-bar button.cancel { background:var(--border); color:var(--text); }
+
+  /* Studied badge */
+  .studied-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:5px 14px; border-radius:4px; margin-top:12px;
+    font-family:'JetBrains Mono',monospace; font-size:0.72rem;
+    cursor:pointer; transition:all 0.15s; border:1px solid var(--border);
+    color:var(--dim); background:transparent;
+  }
+  .studied-badge.studied { border-color:#2d6e4e; color:#3ecf8e; background:rgba(45,110,78,0.15); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="../index.html">GeoGuessr Atlas</a>
+  <span class="nav-sep">/</span>
+  <span class="nav-country">Portugal</span>
+  <a class="nav-back" href="../index.html">← Back to Map</a>
+</nav>
+
+<div class="hero">
+  <!--
+    HEADLINE BACKGROUND: set src to your image path or URL.
+    e.g. src="../images/portugal-hero.jpg"
+    Leave blank or remove this tag for a plain dark background.
+  -->
+  <img class="hero-bg" src="" alt="" onerror="this.style.display='none'"/>
+  <div class="hero-flag">🇵🇹</div>
+  <div class="hero-info">
+    <div class="hero-name">Portugal</div>
+    <div class="hero-region">Southern Europe · Atlantic Coast</div>
+    <button class="studied-badge" id="studied-btn" onclick="toggleStudied()">○ Not studied</button>
+  </div>
+</div>
+
+<div class="freeform">
+
+  <!-- SAVE BAR -->
+  <div class="save-bar">
+    <div class="save-status" id="save-status">
+      <span id="ss-icon"></span><span id="ss-text">Changes auto-save to GitHub when connected</span>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--dim)" id="gh-status-label"></span>
+      <button class="tb-btn" style="font-size:0.65rem" onclick="manualSave()">↑ Save now</button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="editor-toolbar">
+    <button class="tb-btn" onclick="fmt('bold')"><b>B</b></button>
+    <button class="tb-btn" onclick="fmt('italic')"><i>I</i></button>
+    <button class="tb-btn" onclick="fmt('underline')"><u>U</u></button>
+    <button class="tb-btn" onclick="fmt('strikeThrough')"><s>S</s></button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="fmtBlock('h1')">H1</button>
+    <button class="tb-btn" onclick="fmtBlock('h2')">H2</button>
+    <button class="tb-btn" onclick="fmtBlock('h3')">H3</button>
+    <button class="tb-btn" onclick="fmtBlock('p')">¶</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="fmt('insertUnorderedList')">• List</button>
+    <button class="tb-btn" onclick="fmt('insertOrderedList')">1. List</button>
+    <button class="tb-btn" onclick="fmtBlock('blockquote')">❝</button>
+    <button class="tb-btn" onclick="fmt('insertHorizontalRule')">—</button>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="toggleImgBar()">🖼 Image</button>
+    <div class="tb-sep"></div>
+    <div class="tb-color-wrap" title="Text colour">
+      <button class="tb-btn" style="padding:4px 6px">A</button>
+      <input type="color" value="#e8b84b" onchange="fmt('foreColor',this.value)"/>
+    </div>
+    <div class="tb-sep"></div>
+    <button class="tb-btn" onclick="fmt('removeFormat')">✕ Clear</button>
+  </div>
+
+  <!-- IMAGE INSERT BAR -->
+  <div class="img-insert-bar" id="img-insert-bar">
+    <input type="text" id="img-url-input" placeholder="Image URL or relative path…"/>
+    <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="insertLocalImage(this)"/>
+    <button onclick="document.getElementById('img-file-input').click()">Upload</button>
+    <button onclick="insertImgFromUrl()">Insert URL</button>
+    <button class="cancel" onclick="toggleImgBar()">Cancel</button>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="editor-area" id="editor" contenteditable="true" spellcheck="true">
+    <h1>Portugal Notes</h1>
+    <p>Start writing here — use the toolbar to format. Your notes save to GitHub automatically.</p>
+    <h2>Key Clues</h2>
+    <ul>
+      <li>Cork oak trees with peeled orange bark — almost certainly Iberian Peninsula</li>
+      <li>Blue and white azulejo tile facades on buildings</li>
+      <li>License plates: <b>AA-00-AA</b> format with EU blue stripe</li>
+      <li>Look for <b>CEDÊNCIA</b> yield signs</li>
+    </ul>
+    <h2>Regions</h2>
+    <p>Add notes about different regions here…</p>
+    <h2>Reference Images</h2>
+    <p>Use the 🖼 Image button to insert images inline.</p>
+  </div>
+
+</div>
+
+<!-- IMAGE SELECTION OVERLAY (appended to body, positioned with JS) -->
+<div id="img-overlay">
+  <div id="img-drag-handle">
+    ✥ drag
+    <button id="img-delete-btn" title="Remove image" onclick="deleteSelectedImg()">✕</button>
+  </div>
+  <div class="img-rh" data-pos="nw"></div>
+  <div class="img-rh" data-pos="n"></div>
+  <div class="img-rh" data-pos="ne"></div>
+  <div class="img-rh" data-pos="e"></div>
+  <div class="img-rh" data-pos="se"></div>
+  <div class="img-rh" data-pos="s"></div>
+  <div class="img-rh" data-pos="sw"></div>
+  <div class="img-rh" data-pos="w"></div>
+</div>
+
+<script>
+const COUNTRY_CODE = 'PT';
+const PAGE_PATH    = 'countries/portugal.html';
+
+// ── GITHUB CONFIG ─────────────────────────────────────────────────
+function ghConfig() {
+  return {
+    user:   localStorage.getItem('gh-user')   || '',
+    repo:   localStorage.getItem('gh-repo')   || '',
+    branch: localStorage.getItem('gh-branch') || 'main',
+    token:  localStorage.getItem('gh-token')  || '',
+  };
+}
+function isConnected() {
+  const c = ghConfig();
+  return !!(c.user && c.repo && c.token);
+}
+
+// ── STATUS UI ─────────────────────────────────────────────────────
+let saveTimer;
+function setStatus(state, msg) {
+  const el = document.getElementById('save-status');
+  el.className = 'save-status ' + state;
+  document.getElementById('ss-icon').textContent = state==='saving'?'↑':state==='saved'?'✓':state==='error'?'✕':'';
+  document.getElementById('ss-text').textContent = msg;
+  if (state==='saved'||state==='error') {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => setStatus('','Changes auto-save to GitHub when connected'), 4000);
+  }
+}
+function updateGhLabel() {
+  const lbl = document.getElementById('gh-status-label');
+  if (isConnected()) {
+    const c = ghConfig();
+    lbl.textContent = `${c.user}/${c.repo}`;
+    lbl.style.color = 'var(--green)';
+  } else {
+    lbl.textContent = 'Not connected — set up in Admin on the map page';
+    lbl.style.color = 'var(--dim)';
+  }
+}
+
+// ── EDITOR ────────────────────────────────────────────────────────
+const editor = document.getElementById('editor');
+
+// Load from atlas-data.json in the repo, then fall back to localStorage
+async function loadContent() {
+  if (isConnected()) {
+    const cfg = ghConfig();
+    try {
+      // Try to get the actual HTML file from GitHub (the source of truth)
+      const url = `https://api.github.com/repos/${cfg.user}/${cfg.repo}/contents/${PAGE_PATH}?ref=${cfg.branch}&t=${Date.now()}`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `token ${cfg.token}`, 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const html = decodeURIComponent(escape(atob(data.content.replace(/\n/g,''))));
+        // Extract just the editor content from the saved HTML
+        const match = html.match(/id="editor"[^>]*>([\s\S]*?)<\/div>\s*\n\s*<\/div>\s*\n\s*<script/);
+        if (match) { editor.innerHTML = match[1]; return; }
+      }
+    } catch(e) { console.warn('Could not load from GitHub:', e); }
+  }
+  // Fallback: localStorage draft
+  const draft = localStorage.getItem('geo-draft-' + COUNTRY_CODE);
+  if (draft) editor.innerHTML = draft;
+}
+
+loadContent().then(() => updateGhLabel());
+
+// Auto-save draft to localStorage on every keystroke
+editor.addEventListener('input', () => {
+  localStorage.setItem('geo-draft-' + COUNTRY_CODE, editor.innerHTML);
+  scheduleSave();
+});
+
+// Debounced GitHub save
+let ghSaveTimer;
+function scheduleSave() {
+  if (!isConnected()) return;
+  clearTimeout(ghSaveTimer);
+  setStatus('saving','Saving…');
+  ghSaveTimer = setTimeout(savePageToGitHub, 2000);
+}
+
+async function manualSave() {
+  if (!isConnected()) {
+    alert('Not connected to GitHub. Set up your token on the map page (⚙ Admin button).');
+    return;
+  }
+  await savePageToGitHub();
+}
+
+async function savePageToGitHub() {
+  const cfg = ghConfig();
+  setStatus('saving','Saving to GitHub…');
+
+  try {
+    // Get current file SHA
+    const getUrl = `https://api.github.com/repos/${cfg.user}/${cfg.repo}/contents/${PAGE_PATH}?ref=${cfg.branch}`;
+    const getRes = await fetch(getUrl, {
+      headers: { 'Authorization': `token ${cfg.token}`, 'Accept':'application/vnd.github.v3+json' }
+    });
+    let sha = null;
+    if (getRes.ok) { const d = await getRes.json(); sha = d.sha; }
+
+    // Build the full page HTML with current editor content injected
+    const fullHtml = buildPageHtml(editor.innerHTML);
+    const encoded  = btoa(unescape(encodeURIComponent(fullHtml)));
+
+    const body = { message:`atlas: update ${PAGE_PATH}`, content:encoded, branch:cfg.branch };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(`https://api.github.com/repos/${cfg.user}/${cfg.repo}/contents/${PAGE_PATH}`, {
+      method:'PUT',
+      headers:{ 'Authorization':`token ${cfg.token}`, 'Content-Type':'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!putRes.ok) { const err=await putRes.json(); throw new Error(err.message||`HTTP ${putRes.status}`); }
+    setStatus('saved','✓ Saved to GitHub');
+  } catch(e) {
+    setStatus('error',`✕ Save failed: ${e.message}`);
+  }
+}
+
+// Builds a clean, self-contained HTML file to commit
+function buildPageHtml(editorContent) {
+  // Get the current page's outer HTML and swap in the new editor content
+  const clone = document.documentElement.cloneNode(true);
+  clone.querySelector('#editor').innerHTML = editorContent;
+  // Remove the runtime script that loads dynamically — keep only the static page
+  return '<!DOCTYPE html>\n' + clone.outerHTML;
+}
+
+// ── STUDIED ───────────────────────────────────────────────────────
+function getStudied() { try { return JSON.parse(localStorage.getItem('geo-studied')||'{}'); } catch { return {}; } }
+function setStudied(o) { localStorage.setItem('geo-studied',JSON.stringify(o)); }
+
+function renderStudiedBtn() {
+  const s = getStudied()[COUNTRY_CODE];
+  const btn = document.getElementById('studied-btn');
+  btn.textContent = s ? '✓ Studied' : '○ Mark as Studied';
+  btn.className = 'studied-badge' + (s ? ' studied' : '');
+}
+renderStudiedBtn();
+
+async function toggleStudied() {
+  const s = getStudied();
+  s[COUNTRY_CODE] = !s[COUNTRY_CODE];
+  setStudied(s);
+  renderStudiedBtn();
+
+  // Also sync studied state to atlas-data.json in GitHub
+  if (isConnected()) await syncAtlasData();
+}
+
+async function syncAtlasData() {
+  const cfg = ghConfig();
+  try {
+    const url = `https://api.github.com/repos/${cfg.user}/${cfg.repo}/contents/atlas-data.json?ref=${cfg.branch}&t=${Date.now()}`;
+    const getRes = await fetch(url, { headers:{ 'Authorization':`token ${cfg.token}`, 'Accept':'application/vnd.github.v3+json' } });
+    let data = { studied:{}, noStreet:{}, pages:{} }, sha = null;
+    if (getRes.ok) { const j=await getRes.json(); sha=j.sha; data=JSON.parse(atob(j.content.replace(/\n/g,''))); }
+
+    data.studied[COUNTRY_CODE] = !!getStudied()[COUNTRY_CODE];
+
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2))));
+    const body = { message:'atlas: update studied state', content:encoded, branch:cfg.branch };
+    if (sha) body.sha = sha;
+
+    await fetch(`https://api.github.com/repos/${cfg.user}/${cfg.repo}/contents/atlas-data.json`, {
+      method:'PUT',
+      headers:{ 'Authorization':`token ${cfg.token}`, 'Content-Type':'application/json' },
+      body: JSON.stringify(body),
+    });
+    setStatus('saved','✓ Saved to GitHub');
+  } catch(e) { setStatus('error',`✕ ${e.message}`); }
+}
+
+// ── EDITOR HELPERS ────────────────────────────────────────────────
+function fmt(cmd,val) { editor.focus(); document.execCommand(cmd,false,val||null); }
+function fmtBlock(tag) { editor.focus(); document.execCommand('formatBlock',false,tag); }
+
+function toggleImgBar() {
+  const bar = document.getElementById('img-insert-bar');
+  bar.classList.toggle('open');
+  if (bar.classList.contains('open')) document.getElementById('img-url-input').focus();
+}
+function insertImgFromUrl() {
+  const url = document.getElementById('img-url-input').value.trim();
+  if (!url) return;
+  editor.focus();
+  document.execCommand('insertHTML',false,`<img src="${url}" alt=""/>`);
+  document.getElementById('img-url-input').value='';
+  document.getElementById('img-insert-bar').classList.remove('open');
+  scheduleSave();
+}
+function insertLocalImage(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    editor.focus();
+    document.execCommand('insertHTML',false,`<img src="${e.target.result}" alt="${file.name}"/>`);
+    document.getElementById('img-insert-bar').classList.remove('open');
+    scheduleSave();
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+
+// ── IMAGE DRAG & RESIZE ───────────────────────────────────────────
+const overlay   = document.getElementById('img-overlay');
+const dragHandle = document.getElementById('img-drag-handle');
+let selectedImg = null;
+
+function syncOverlay() {
+  if (!selectedImg) return;
+  const r = selectedImg.getBoundingClientRect();
+  overlay.style.left   = r.left   + 'px';
+  overlay.style.top    = r.top    + 'px';
+  overlay.style.width  = r.width  + 'px';
+  overlay.style.height = r.height + 'px';
+}
+
+function selectImg(img) {
+  if (selectedImg) selectedImg.classList.remove('img-selected');
+  selectedImg = img;
+  if (!img) { overlay.classList.remove('visible'); return; }
+  img.classList.add('img-selected');
+  overlay.classList.add('visible');
+  syncOverlay();
+}
+
+function deleteSelectedImg() {
+  if (!selectedImg) return;
+  selectedImg.remove();
+  selectImg(null);
+  scheduleSave();
+}
+
+// Click on image in editor → select it
+editor.addEventListener('click', e => {
+  if (e.target.tagName === 'IMG') { e.preventDefault(); selectImg(e.target); }
+  else selectImg(null);
+});
+
+// Deselect when clicking outside editor and overlay
+document.addEventListener('mousedown', e => {
+  if (selectedImg && !overlay.contains(e.target) && !editor.contains(e.target)) {
+    selectImg(null);
+  }
+});
+
+// Keep overlay in sync on scroll/resize
+window.addEventListener('scroll', syncOverlay, true);
+window.addEventListener('resize', syncOverlay);
+
+// ── DRAG to move ──────────────────────────────────────────────────
+dragHandle.addEventListener('mousedown', e => {
+  if (!selectedImg) return;
+  e.preventDefault();
+  const startX = e.clientX, startY = e.clientY;
+  const imgRect   = selectedImg.getBoundingClientRect();
+  const editorRect = editor.getBoundingClientRect();
+
+  // Convert img to position:absolute inside the editor if not already
+  if (selectedImg.style.position !== 'absolute') {
+    selectedImg.style.position = 'absolute';
+    selectedImg.style.left = (imgRect.left - editorRect.left + editor.scrollLeft) + 'px';
+    selectedImg.style.top  = (imgRect.top  - editorRect.top  + editor.scrollTop)  + 'px';
+    selectedImg.style.width  = imgRect.width  + 'px';
+    selectedImg.style.height = imgRect.height + 'px';
+    // Make editor a positioning context
+    if (getComputedStyle(editor).position === 'static') editor.style.position = 'relative';
+  }
+
+  const startLeft = parseInt(selectedImg.style.left) || 0;
+  const startTop  = parseInt(selectedImg.style.top)  || 0;
+
+  function onMove(ev) {
+    const dx = ev.clientX - startX, dy = ev.clientY - startY;
+    selectedImg.style.left = (startLeft + dx) + 'px';
+    selectedImg.style.top  = (startTop  + dy) + 'px';
+    syncOverlay();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    scheduleSave();
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+});
+
+// ── RESIZE handles ────────────────────────────────────────────────
+document.querySelectorAll('.img-rh').forEach(handle => {
+  handle.addEventListener('mousedown', e => {
+    if (!selectedImg) return;
+    e.preventDefault();
+    const pos = handle.dataset.pos;
+    const startX = e.clientX, startY = e.clientY;
+    const r = selectedImg.getBoundingClientRect();
+    const startW = r.width, startH = r.height;
+    const startLeft = parseInt(selectedImg.style.left) || r.left - editor.getBoundingClientRect().left;
+    const startTop  = parseInt(selectedImg.style.top)  || r.top  - editor.getBoundingClientRect().top;
+
+    // Ensure absolute positioning for resize too
+    if (selectedImg.style.position !== 'absolute') {
+      const edRect = editor.getBoundingClientRect();
+      selectedImg.style.position = 'absolute';
+      selectedImg.style.left = (r.left - edRect.left + editor.scrollLeft) + 'px';
+      selectedImg.style.top  = (r.top  - edRect.top  + editor.scrollTop)  + 'px';
+      selectedImg.style.width  = r.width  + 'px';
+      selectedImg.style.height = r.height + 'px';
+      if (getComputedStyle(editor).position === 'static') editor.style.position = 'relative';
+    }
+
+    function onMove(ev) {
+      const dx = ev.clientX - startX, dy = ev.clientY - startY;
+      let newW = startW, newH = startH;
+      let newLeft = startLeft, newTop = startTop;
+
+      if (pos.includes('e')) newW = Math.max(40, startW + dx);
+      if (pos.includes('s')) newH = Math.max(30, startH + dy);
+      if (pos.includes('w')) { newW = Math.max(40, startW - dx); newLeft = startLeft + (startW - newW); }
+      if (pos.includes('n')) { newH = Math.max(30, startH - dy); newTop  = startTop  + (startH - newH); }
+
+      selectedImg.style.width  = newW + 'px';
+      selectedImg.style.height = newH + 'px';
+      selectedImg.style.left   = newLeft + 'px';
+      selectedImg.style.top    = newTop  + 'px';
+      syncOverlay();
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      scheduleSave();
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+});
+</script>
+</body>
+</html>
